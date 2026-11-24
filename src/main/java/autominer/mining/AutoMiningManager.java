@@ -31,6 +31,7 @@ public final class AutoMiningManager {
     private boolean repairWaiting;
     private long repairStarted;
     private int repairSlot = -1;
+    private long lastRepairAttempt = -10000;
 
     public AutoMiningManager(BlockWhitelist whitelist) {
         this.whitelist = whitelist;
@@ -98,11 +99,13 @@ public final class AutoMiningManager {
         }
         int selected = c.player.getInventory().getSelectedSlot();
         ItemStack heldTool = c.player.getInventory().getStack(selected);
-        if (heldTool.isIn(ItemTags.PICKAXES) && ToolManager.durabilityLeft(heldTool) == 10) {
+        if (heldTool.isIn(ItemTags.PICKAXES) && ToolManager.durabilityLeft(heldTool) == 10
+                && tick - lastRepairAttempt >= 200) {
             controller.releaseKeys(c);
             c.getNetworkHandler().sendChatCommand("naprawkilof");
             repairWaiting = true;
             repairStarted = tick;
+            lastRepairAttempt = tick;
             repairSlot = selected;
             status = Status.WAITING;
             AutoMiner.notifications.info("PICKAXE AT 10 DURABILITY - REPAIRING");
