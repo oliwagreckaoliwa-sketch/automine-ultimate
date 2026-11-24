@@ -44,6 +44,8 @@ public final class AutoDepositManager {
     private int failures;
     private int lastFreeSlots = -1;
     private String lastResult = "";
+    private int currentChestIndex;
+    private boolean continueWithNextChest;
 
     private ScreenHandler handler;
     private final Deque<Integer> queue = new ArrayDeque<>();
@@ -111,7 +113,7 @@ public final class AutoDepositManager {
         Set<String> filter = InventoryTransfer.filterSet(cfg);
         int pending = InventoryTransfer.countMatching(p, filter);
 
-        if (!cfg.chestSet) {
+        if (!cfg.chestSet || cfg.chests.isEmpty()) {
             if (manual) AutoMiner.notifications.warn("NO DEPOSIT CHEST SELECTED");
             manual = false;
             return;
@@ -126,7 +128,8 @@ public final class AutoDepositManager {
             return;
         }
 
-        ChestManager.State s = AutoMiner.chests.state(c);
+        currentChestIndex = AutoMiner.chests.nextReadyIndex(c, 0);
+        ChestManager.State s = currentChestIndex < 0 ? ChestManager.State.NOT_SET : AutoMiner.chests.state(c, currentChestIndex);
         if (s != ChestManager.State.READY) {
             if (manual || tick >= warnUntil) {
                 switch (s) {
@@ -153,7 +156,7 @@ public final class AutoDepositManager {
             fail(c, tick, "DEPOSIT INTERRUPTED");
             return;
         }
-        if (AutoMiner.chests.state(c) != ChestManager.State.READY) {
+        if (AutoMiner.chests.state(c, currentChestIndex) != ChestManager.State.READY) {
             fail(c, tick, "CHEST NOT REACHABLE");
             return;
         }
@@ -161,12 +164,12 @@ public final class AutoDepositManager {
             fail(c, tick, "CHEST NOT IN VIEW");
             return;
         }
-        BlockPos pos = AutoMiner.chests.position();
+        BlockPos pos = AutoMiner.chests.position(currentChestIndex);
         double speed = Math.max(ConfigManager.get().rotationSpeed, 15.0);
         double err = AimHelper.apply(c.player, Vec3d.ofCenter(pos), speed);
         HitResult h = c.crosshairTarget;
         if (err < 4.0 && h instanceof BlockHitResult bhr && h.getType() == HitResult.Type.BLOCK
-                && AutoMiner.chests.matches(c, bhr.getBlockPos())) {
+                && AutoMiner.chests.matches(c, bhr.getBlockPos(), currentChestIndex)) {
             ActionResult r = c.interactionManager.interactBlock(c.player, Hand.MAIN_HAND, bhr);
             if (r.isAccepted()) c.player.swingHand(Hand.MAIN_HAND);
             phase = Phase.OPENING;
@@ -228,19 +231,21 @@ public final class AutoDepositManager {
         }
         int left = 0;
         for (int v : after.values()) left += v;
+        continueWithNextChest = left > 0;
         if (total > 0) {
             AutoMiner.stats.onDeposited(moved);
             failures = 0;
             lastResult = "Deposited " + total + " items";
             if (left > 0) {
-                AutoMiner.notifications.warn("CHEST FULL - " + left + " items kept");
+                AutoMiner.notifications.info("CHEST FULL - checking next chest");
             } else {
                 AutoMiner.notifications.success("DEPOSITED " + total + " ITEMS");
             }
         } else {
             lastResult = "Nothing moved";
             failures++;
-            AutoMiner.notifications.warn("CHEST FULL OR SERVER REFUSED - ITEMS KEPT");
+            continueWithNextChest = true;
+            AutoMiner.notifications.warn("CHEST FULL - checking next chest");
         }
         phase = Phase.CLOSING;
         phaseStart = tick;
@@ -248,6 +253,18 @@ public final class AutoDepositManager {
 
     private void closing(MinecraftClient c, long tick) {
         if (c.currentScreen instanceof HandledScreen<?>) c.player.closeHandledScreen();
+        if (continueWithNextChest && pendingItems(c) > 0) {
+            int next = AutoMiner.chests.nextReadyIndex(c, currentChestIndex + 1);
+            if (next >= 0) {
+                currentChestIndex = next;
+                continueWithNextChest = false;
+                phase = Phase.AIM;
+                phaseStart = tick;
+                return;
+            }
+            AutoMiner.notifications.warn("ALL CHESTS FULL OR UNAVAILABLE - ITEMS KEPT");
+        }
+        continueWithNextChest = false;
         finish(tick, failures >= 3 ? tick + 1200 : tick + 40);
         if (failures >= 3) {
             ConfigManager.get().depositEnabled = false;
@@ -286,6 +303,7 @@ public final class AutoDepositManager {
         handler = null;
         queue.clear();
         manual = false;
+        continueWithNextChest = false;
         AutoMiner.mining.setSuspended(false);
     }
 }
