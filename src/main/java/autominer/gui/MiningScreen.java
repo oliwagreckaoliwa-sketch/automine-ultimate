@@ -72,6 +72,32 @@ public final class MiningScreen extends GuiPanel {
         ui.text("Only hotbar pickaxes are used. Server rules always apply.", ix, ry + 2, Draw.MUTED);
         cy += rows * ROW + 20;
 
+        section(ui, "Advanced mining", x + 2, cy + 2);
+        cy += 18;
+        ui.card(x, cy, cw, 88);
+        ry = cy + 8;
+        tog(ui, "customrock-loop", ix, ry, iw, "Continuous custom rock mining", cfg.continuousCustomRockMining,
+                b -> cfg.continuousCustomRockMining = b);
+        ry += ROW;
+        tog(ui, "auto-repair", ix, ry, iw, "Auto repair pickaxe", cfg.autoRepairPickaxe,
+                b -> cfg.autoRepairPickaxe = b);
+        ry += ROW;
+        ui.text("Command /naprawkilof at exactly " + cfg.pickaxeRepairThreshold + " durability", ix, ry + 2, Draw.MUTED);
+        cy += 96;
+
+        int statusGap = 8;
+        int statusW = (cw - statusGap) / 2;
+        ui.card(x, cy, statusW, 42);
+        ui.text("CUSTOM ROCK LOOP", x + 8, cy + 7, Draw.MUTED);
+        ui.text(cfg.continuousCustomRockMining ? "ENABLED" : "DISABLED", x + 8, cy + 22,
+                cfg.continuousCustomRockMining ? Draw.ON : Draw.OFF);
+        ui.card(x + statusW + statusGap, cy, statusW, 42);
+        ui.text("PICKAXE REPAIR", x + statusW + statusGap + 8, cy + 7, Draw.MUTED);
+        String repairState = !cfg.autoRepairPickaxe ? "DISABLED" : m.isRepairWaiting() ? "REPAIRING" : "ARMED";
+        ui.text(repairState, x + statusW + statusGap + 8, cy + 22,
+                !cfg.autoRepairPickaxe ? Draw.OFF : m.isRepairWaiting() ? Draw.WARN : Draw.ON);
+        cy += 50;
+
         contentH = cy - top + 6;
         ui.scrollEnd();
     }
