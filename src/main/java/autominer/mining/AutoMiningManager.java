@@ -66,6 +66,8 @@ public final class AutoMiningManager {
         return controller;
     }
 
+    public boolean isRepairWaiting() { return repairWaiting; }
+
     public String statusText() {
         return switch (state) {
             case STOPPED -> "OFF";
@@ -244,7 +246,8 @@ public final class AutoMiningManager {
         lastHealth = hp;
         int selected = c.player.getInventory().getSelectedSlot();
         ItemStack heldTool = c.player.getInventory().getStack(selected);
-        if (heldTool.isIn(ItemTags.PICKAXES) && ToolManager.durabilityLeft(heldTool) == 10
+        if (cfg.autoRepairPickaxe && heldTool.isIn(ItemTags.PICKAXES)
+                && ToolManager.durabilityLeft(heldTool) == cfg.pickaxeRepairThreshold
                 && tick - lastRepairAttempt >= 200) {
             controller.releaseKeys(c);
             c.getNetworkHandler().sendChatCommand("naprawkilof");
@@ -253,7 +256,7 @@ public final class AutoMiningManager {
             lastRepairAttempt = tick;
             repairSlot = selected;
             status = Status.WAITING;
-            AutoMiner.notifications.info("PICKAXE AT 10 DURABILITY - REPAIRING");
+            AutoMiner.notifications.info("PICKAXE AT " + cfg.pickaxeRepairThreshold + " DURABILITY - REPAIRING");
             return;
         }
         if (whitelist.isEmpty()) {
