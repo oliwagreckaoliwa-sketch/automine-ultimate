@@ -51,10 +51,11 @@ public final class DepositScreen extends GuiPanel {
                     default -> "Unavailable";
                 };
                 int color = state == ChestManager.State.READY ? Draw.ON : Draw.WARN;
+                final int chestIndex = i;
                 int yy = cy + 20 + i * 20;
                 ui.text(ui.fit((i + 1) + ". " + e.x + ", " + e.y + ", " + e.z + "  |  " + status, cw - 100), ix, yy + 2, color);
                 ui.button("remove-chest-" + i, x + cw - 72, yy, 62, 16, "REMOVE", Ui.Style.DANGER, true,
-                        () -> ch.remove(i));
+                        () -> ch.remove(chestIndex));
             }
         }
         cy += 38 + chestRows * 20;
