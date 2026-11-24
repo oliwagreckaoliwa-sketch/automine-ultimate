@@ -77,6 +77,7 @@ public final class DepositScreen extends GuiPanel {
         cy += 30;
 
         // --- ustawienia ---
+        int ry;
         int rows = 6;
         ui.card(x, cy, cw, rows * ROW + 14);
         ry = cy + 8;
