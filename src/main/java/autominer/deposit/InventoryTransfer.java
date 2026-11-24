@@ -41,7 +41,7 @@ public final class InventoryTransfer {
 
     public static int freeMainSlots(ClientPlayerEntity p) {
         int n = 0;
-        for (ItemStack s : p.getInventory().main) {
+        for (ItemStack s : p.getInventory().getMainStacks()) {
             if (s.isEmpty()) n++;
         }
         return n;
