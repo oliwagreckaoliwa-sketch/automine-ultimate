@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.util.math.BlockPos;
@@ -112,9 +113,8 @@ public final class MiningPathfinder {
     }
 
     private static boolean dangerous(BlockState state) {
-        return state.isBurnable()
-                || state.getBlock().getTranslationKey().contains("cactus")
-                || state.getBlock().getTranslationKey().contains("magma")
-                || state.getBlock().getTranslationKey().contains("berry_bush");
+        return state.isOf(Blocks.FIRE) || state.isOf(Blocks.SOUL_FIRE)
+                || state.isOf(Blocks.MAGMA_BLOCK) || state.isOf(Blocks.CACTUS)
+                || state.isOf(Blocks.SWEET_BERRY_BUSH);
     }
 }
