@@ -63,39 +63,51 @@ public final class ChestManager {
             return;
         }
         ModConfig cfg = ConfigManager.get();
+        boolean exists = cfg.chests.stream().anyMatch(e -> e.worldKey.equals(worldKey(c)) && e.dimension.equals(dimension(c)) && e.x == pos.getX() && e.y == pos.getY() && e.z == pos.getZ());
+        if (exists) { AutoMiner.notifications.warn("CHEST ALREADY ADDED"); return; }
+        cfg.chests.add(new ModConfig.ChestEntry(worldKey(c), dimension(c), pos.getX(), pos.getY(), pos.getZ()));
         cfg.chestSet = true;
-        cfg.chestWorldKey = worldKey(c);
-        cfg.chestDimension = dimension(c);
-        cfg.chestX = pos.getX();
-        cfg.chestY = pos.getY();
-        cfg.chestZ = pos.getZ();
         ConfigManager.markDirty();
-        AutoMiner.notifications.success("DEPOSIT CHEST SET: " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
+        AutoMiner.notifications.success("DEPOSIT CHEST ADDED (" + cfg.chests.size() + ")");
     }
 
     public void clear() {
         ModConfig cfg = ConfigManager.get();
+        cfg.chests.clear();
         cfg.chestSet = false;
         ConfigManager.markDirty();
     }
 
-    public BlockPos position() {
-        ModConfig cfg = ConfigManager.get();
-        return cfg.chestSet ? new BlockPos(cfg.chestX, cfg.chestY, cfg.chestZ) : null;
+    public int size() { return ConfigManager.get().chests.size(); }
+
+    public ModConfig.ChestEntry entry(int index) {
+        var list = ConfigManager.get().chests;
+        return index >= 0 && index < list.size() ? list.get(index) : null;
     }
 
-    public BlockPos selectedPosInCurrentWorld(MinecraftClient c) {
-        ModConfig cfg = ConfigManager.get();
-        if (!cfg.chestSet || c.world == null) return null;
-        if (!cfg.chestWorldKey.equals(worldKey(c)) || !cfg.chestDimension.equals(dimension(c))) return null;
-        return position();
+    public BlockPos position() { return position(0); }
+
+    public BlockPos position(int index) {
+        ModConfig.ChestEntry e = entry(index);
+        return e == null ? null : new BlockPos(e.x, e.y, e.z);
     }
 
-    public State state(MinecraftClient c) {
-        ModConfig cfg = ConfigManager.get();
-        if (!cfg.chestSet) return State.NOT_SET;
+    public BlockPos selectedPosInCurrentWorld(MinecraftClient c) { return selectedPosInCurrentWorld(c, 0); }
+
+    public BlockPos selectedPosInCurrentWorld(MinecraftClient c, int index) {
+        ModConfig.ChestEntry e = entry(index);
+        if (e == null || c.world == null) return null;
+        if (!e.worldKey.equals(worldKey(c)) || !e.dimension.equals(dimension(c))) return null;
+        return position(index);
+    }
+
+    public State state(MinecraftClient c) { return state(c, 0); }
+
+    public State state(MinecraftClient c, int index) {
+        ModConfig.ChestEntry e = entry(index);
+        if (e == null) return State.NOT_SET;
         if (c.world == null || c.player == null) return State.OTHER_WORLD;
-        BlockPos pos = selectedPosInCurrentWorld(c);
+        BlockPos pos = selectedPosInCurrentWorld(c, index);
         if (pos == null) return State.OTHER_WORLD;
         if (!isContainerBlock(c.world.getBlockState(pos))) return State.MISSING;
         double reach = c.player.getBlockInteractionRange() - 0.5;
@@ -103,9 +115,18 @@ public final class ChestManager {
         return State.READY;
     }
 
+    public int nextReadyIndex(MinecraftClient c, int startInclusive) {
+        for (int i = Math.max(0, startInclusive); i < size(); i++) {
+            if (state(c, i) == State.READY) return i;
+        }
+        return -1;
+    }
+
     /** Czy trafiony blok to zapisana skrzynka (lub druga polowa duzej skrzyni). */
-    public boolean matches(MinecraftClient c, BlockPos hit) {
-        BlockPos pos = position();
+    public boolean matches(MinecraftClient c, BlockPos hit) { return matches(c, hit, 0); }
+
+    public boolean matches(MinecraftClient c, BlockPos hit, int index) {
+        BlockPos pos = position(index);
         if (pos == null || c.world == null) return false;
         if (hit.equals(pos)) return true;
         boolean adjacent = Math.abs(hit.getX() - pos.getX()) + Math.abs(hit.getY() - pos.getY())
