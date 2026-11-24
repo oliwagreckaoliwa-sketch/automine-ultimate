@@ -97,20 +97,6 @@ public final class AutoMiningManager {
         if (c.player == null || c.world == null || c.interactionManager == null) {
             return false;
         }
-        int selected = c.player.getInventory().getSelectedSlot();
-        ItemStack heldTool = c.player.getInventory().getStack(selected);
-        if (heldTool.isIn(ItemTags.PICKAXES) && ToolManager.durabilityLeft(heldTool) == 10
-                && tick - lastRepairAttempt >= 200) {
-            controller.releaseKeys(c);
-            c.getNetworkHandler().sendChatCommand("naprawkilof");
-            repairWaiting = true;
-            repairStarted = tick;
-            lastRepairAttempt = tick;
-            repairSlot = selected;
-            status = Status.WAITING;
-            AutoMiner.notifications.info("PICKAXE AT 10 DURABILITY - REPAIRING");
-            return;
-        }
         if (whitelist.isEmpty()) {
             AutoMiner.notifications.warn("NO BLOCKS SELECTED - look at a block and press F5");
             return false;
@@ -256,6 +242,20 @@ public final class AutoMiningManager {
             return;
         }
         lastHealth = hp;
+        int selected = c.player.getInventory().getSelectedSlot();
+        ItemStack heldTool = c.player.getInventory().getStack(selected);
+        if (heldTool.isIn(ItemTags.PICKAXES) && ToolManager.durabilityLeft(heldTool) == 10
+                && tick - lastRepairAttempt >= 200) {
+            controller.releaseKeys(c);
+            c.getNetworkHandler().sendChatCommand("naprawkilof");
+            repairWaiting = true;
+            repairStarted = tick;
+            lastRepairAttempt = tick;
+            repairSlot = selected;
+            status = Status.WAITING;
+            AutoMiner.notifications.info("PICKAXE AT 10 DURABILITY - REPAIRING");
+            return;
+        }
         if (whitelist.isEmpty()) {
             stop("NO BLOCKS SELECTED");
             return;
