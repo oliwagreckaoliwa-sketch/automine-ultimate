@@ -78,6 +78,16 @@ public final class ChestManager {
         ConfigManager.markDirty();
     }
 
+    public void remove(int index) {
+        ModConfig cfg = ConfigManager.get();
+        if (index >= 0 && index < cfg.chests.size()) {
+            cfg.chests.remove(index);
+            cfg.chestSet = !cfg.chests.isEmpty();
+            ConfigManager.markDirty();
+            AutoMiner.notifications.info("DEPOSIT CHEST REMOVED");
+        }
+    }
+
     public int size() { return ConfigManager.get().chests.size(); }
 
     public ModConfig.ChestEntry entry(int index) {
