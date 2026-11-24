@@ -32,6 +32,9 @@ public class ModConfig {
     public boolean walkToTargets = false;
     public double walkRange = 10.0;
     public int idleStopSeconds = 0;
+    public boolean continuousCustomRockMining = true;
+    public boolean autoRepairPickaxe = true;
+    public int pickaxeRepairThreshold = 10;
 
     // --- Block Selector ---
     public List<BlockGroup> groups = new ArrayList<>();
@@ -95,6 +98,7 @@ public class ModConfig {
         minDurability = clamp(minDurability, 0, 500);
         walkRange = clamp(walkRange, 3.0, 24.0);
         idleStopSeconds = clamp(idleStopSeconds, 0, 3600);
+        pickaxeRepairThreshold = clamp(pickaxeRepairThreshold, 1, 500);
         depositIntervalSeconds = clamp(depositIntervalSeconds, 5, 3600);
         fullFreeSlots = clamp(fullFreeSlots, 0, 8);
         depositClicksPerTick = clamp(depositClicksPerTick, 1, 4);
