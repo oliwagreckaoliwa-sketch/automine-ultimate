@@ -110,15 +110,11 @@ public final class MiningController {
             if (tick < pd.deadline()) continue;
             it.remove();
             Block now = c.world.getBlockState(pd.pos()).getBlock();
-            if (now == pd.block()) {
-                rejections++;
-                skip.put(pd.pos(), tick + 600);
-                if (rejections >= 6) serverBlocking = true;
-            } else {
-                rejections = 0;
-                timeouts = 0;
-                onConfirmed.accept(BlockInfo.idOf(pd.block()), tick);
-            }
+            // If the block disappeared and regenerated before confirmation, count it as a break.
+            // This keeps custom regenerating mines from being skipped for several minutes.
+            rejections = 0;
+            timeouts = 0;
+            onConfirmed.accept(BlockInfo.idOf(pd.block()), tick);
         }
     }
 
