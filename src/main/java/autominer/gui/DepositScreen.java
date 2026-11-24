@@ -35,7 +35,7 @@ public final class DepositScreen extends GuiPanel {
 
         // --- zapisane skrzynki ---
         int chestRows = Math.max(1, cfg.chests.size());
-        ui.card(x, cy, cw, 30 + chestRows * 18);
+        ui.card(x, cy, cw, 30 + chestRows * 20);
         ui.text("Saved chests: " + cfg.chests.size(), ix, cy + 8, Draw.TEXT);
         if (cfg.chests.isEmpty()) {
             ui.text("No chest selected", ix, cy + 19, Draw.WARN);
@@ -51,11 +51,13 @@ public final class DepositScreen extends GuiPanel {
                     default -> "Unavailable";
                 };
                 int color = state == ChestManager.State.READY ? Draw.ON : Draw.WARN;
-                int yy = cy + 20 + i * 18;
-                ui.text((i + 1) + ". " + e.x + ", " + e.y + ", " + e.z + "  |  " + status, ix, yy, color);
+                int yy = cy + 20 + i * 20;
+                ui.text(ui.fit((i + 1) + ". " + e.x + ", " + e.y + ", " + e.z + "  |  " + status, cw - 100), ix, yy + 2, color);
+                ui.button("remove-chest-" + i, x + cw - 72, yy, 62, 16, "REMOVE", Ui.Style.DANGER, true,
+                        () -> ch.remove(i));
             }
         }
-        cy += 38 + chestRows * 18;
+        cy += 38 + chestRows * 20;
 
         ui.text("Free slots in last opened chest: " + (d.lastFreeSlots() < 0 ? "unknown" : d.lastFreeSlots()), ix, cy, Draw.TEXT);
         cy += 14;
