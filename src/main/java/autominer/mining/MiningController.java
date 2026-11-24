@@ -13,10 +13,8 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -52,6 +50,9 @@ public final class MiningController {
     private boolean forwardHeld;
     private boolean jumpHeld;
     private boolean serverBlocking;
+    private final List<BlockPos> walkPath = new ArrayList<>();
+    private BlockPos walkGoal;
+    private long lastPathUpdate = -1000;
 
     /** (identyfikator bloku, tick) po potwierdzonym wykopaniu. */
     public BiConsumer<String, Long> onConfirmed = (id, t) -> {};
@@ -79,6 +80,9 @@ public final class MiningController {
         rejections = 0;
         timeouts = 0;
         serverBlocking = false;
+        walkPath.clear();
+        walkGoal = null;
+        lastPathUpdate = -1000;
         skip.clear();
     }
 
@@ -252,41 +256,50 @@ public final class MiningController {
         return until != null && until > tick;
     }
 
-    /** Idzie w strone bloku. Zwraca false, gdy ruch jest niebezpieczny. */
+    /**
+     * Podąża po trasie 3D wyznaczonej przez A*: uwzględnia schody, różnice wysokości,
+     * zejścia i przeszkody. Trasa jest odświeżana okresowo oraz po zmianie celu.
+     */
     private boolean walk(MinecraftClient c, BlockPos to) {
         ClientPlayerEntity p = c.player;
-        AimHelper.apply(p, Vec3d.ofCenter(to), ConfigManager.get().rotationSpeed);
-        if (!safeAhead(c)) {
+        long now = AutoMiner.tick;
+        if (!to.equals(walkGoal) || now - lastPathUpdate >= 12 || walkPath.isEmpty()) {
+            walkPath.clear();
+            walkPath.addAll(MiningPathfinder.findPath(c, to));
+            walkGoal = to.toImmutable();
+            lastPathUpdate = now;
+        }
+
+        while (!walkPath.isEmpty()) {
+            BlockPos step = walkPath.get(0);
+            double dx = (step.getX() + 0.5) - p.getX();
+            double dz = (step.getZ() + 0.5) - p.getZ();
+            double horizontal = Math.sqrt(dx * dx + dz * dz);
+            if (horizontal < 0.32 && Math.abs(step.getY() - p.getBlockPos().getY()) <= 1) {
+                walkPath.remove(0);
+            } else {
+                break;
+            }
+        }
+        if (walkPath.isEmpty()) {
             releaseMovement(c);
             return false;
         }
+
+        BlockPos step = walkPath.get(0);
+        Vec3d waypoint = new Vec3d(step.getX() + 0.5, step.getY(), step.getZ() + 0.5);
+        AimHelper.apply(p, waypoint, ConfigManager.get().rotationSpeed);
         if (!forwardHeld) {
             c.options.forwardKey.setPressed(true);
             forwardHeld = true;
         }
-        boolean wantJump = p.horizontalCollision && p.isOnGround();
+
+        // Jump only for an upward step. Downhill nodes are traversed without forcing a jump.
+        boolean wantJump = step.getY() > p.getBlockPos().getY() && p.isOnGround();
         if (wantJump != jumpHeld) {
             c.options.jumpKey.setPressed(wantJump);
             jumpHeld = wantJump;
         }
         return true;
-    }
-
-    private boolean safeAhead(MinecraftClient c) {
-        ClientPlayerEntity p = c.player;
-        Vec3d look = Vec3d.fromPolar(0.0f, p.getYaw());
-        BlockPos ahead = p.getBlockPos().add((int) Math.round(look.x), 0, (int) Math.round(look.z));
-        for (BlockPos q : new BlockPos[] {ahead, ahead.up(), ahead.down()}) {
-            BlockState st = c.world.getBlockState(q);
-            if (st.getFluidState().isIn(FluidTags.LAVA)) return false;
-            if (st.isOf(Blocks.FIRE) || st.isOf(Blocks.SOUL_FIRE) || st.isOf(Blocks.MAGMA_BLOCK)
-                    || st.isOf(Blocks.CACTUS) || st.isOf(Blocks.SWEET_BERRY_BUSH)) {
-                return false;
-            }
-        }
-        for (int k = 1; k <= 3; k++) {
-            if (!c.world.getBlockState(ahead.down(k)).isAir()) return true;
-        }
-        return false; // przepasc glebsza niz 3 bloki
     }
 }
