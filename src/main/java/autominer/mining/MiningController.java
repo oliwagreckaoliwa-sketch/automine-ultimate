@@ -110,8 +110,14 @@ public final class MiningController {
             if (tick < pd.deadline()) continue;
             it.remove();
             Block now = c.world.getBlockState(pd.pos()).getBlock();
-            // If the block disappeared and regenerated before confirmation, count it as a break.
-            // This keeps custom regenerating mines from being skipped for several minutes.
+            ModConfig cfg = ConfigManager.get();
+            if (now == pd.block() && !cfg.continuousCustomRockMining) {
+                rejections++;
+                skip.put(pd.pos(), tick + 600);
+                if (rejections >= 6) serverBlocking = true;
+                continue;
+            }
+            // Regenerating custom blocks are treated as a completed break and reacquired immediately.
             rejections = 0;
             timeouts = 0;
             onConfirmed.accept(BlockInfo.idOf(pd.block()), tick);
