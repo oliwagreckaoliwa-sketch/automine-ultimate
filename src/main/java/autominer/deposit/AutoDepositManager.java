@@ -243,7 +243,6 @@ public final class AutoDepositManager {
             }
         } else {
             lastResult = "Nothing moved";
-            failures++;
             continueWithNextChest = true;
             AutoMiner.notifications.warn("CHEST FULL - checking next chest");
         }
