@@ -7,6 +7,8 @@ import autominer.selector.BlockInfo;
 import java.util.Map;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.world.GameMode;
 
 /** Stan Auto Miner (start/stop/pauza), walidacja warunkow i spinanie z licznikami. */
@@ -26,6 +28,9 @@ public final class AutoMiningManager {
     private boolean suspended;
     private float lastHealth;
     private long lastBreakTick = -1000;
+    private boolean repairWaiting;
+    private long repairStarted;
+    private int repairSlot = -1;
 
     public AutoMiningManager(BlockWhitelist whitelist) {
         this.whitelist = whitelist;
@@ -91,6 +96,18 @@ public final class AutoMiningManager {
         if (c.player == null || c.world == null || c.interactionManager == null) {
             return false;
         }
+        int selected = c.player.getInventory().getSelectedSlot();
+        ItemStack heldTool = c.player.getInventory().getStack(selected);
+        if (heldTool.isIn(ItemTags.PICKAXES) && ToolManager.durabilityLeft(heldTool) == 10) {
+            controller.releaseKeys(c);
+            c.getNetworkHandler().sendChatCommand("naprawkilof");
+            repairWaiting = true;
+            repairStarted = tick;
+            repairSlot = selected;
+            status = Status.WAITING;
+            AutoMiner.notifications.info("PICKAXE AT 10 DURABILITY - REPAIRING");
+            return;
+        }
         if (whitelist.isEmpty()) {
             AutoMiner.notifications.warn("NO BLOCKS SELECTED - look at a block and press F5");
             return false;
@@ -121,6 +138,8 @@ public final class AutoMiningManager {
         state = State.STOPPED;
         status = Status.OFF;
         suspended = false;
+        repairWaiting = false;
+        repairSlot = -1;
         lastReason = reason == null ? "" : reason;
         controller.reset(c);
         if (was) {
@@ -189,6 +208,23 @@ public final class AutoMiningManager {
         if (!c.player.isAlive()) {
             stop("PLAYER DIED");
             return;
+        }
+        if (repairWaiting) {
+            controller.releaseKeys(c);
+            ItemStack repaired = repairSlot >= 0 && repairSlot < 9 ? c.player.getInventory().getStack(repairSlot) : ItemStack.EMPTY;
+            if (!repaired.isIn(ItemTags.PICKAXES) || ToolManager.durabilityLeft(repaired) > 10) {
+                repairWaiting = false;
+                repairSlot = -1;
+                lastHealth = c.player.getHealth();
+                AutoMiner.notifications.success("PICKAXE REPAIRED - MINING RESUMED");
+            } else if (tick - repairStarted > 40) {
+                repairWaiting = false;
+                repairSlot = -1;
+                AutoMiner.notifications.warn("PICKAXE REPAIR NOT CONFIRMED");
+            } else {
+                status = Status.WAITING;
+                return;
+            }
         }
         if (state == State.PAUSED) {
             controller.releaseKeys(c);
