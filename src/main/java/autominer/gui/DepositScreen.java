@@ -33,58 +33,43 @@ public final class DepositScreen extends GuiPanel {
         int ix = x + 10;
         int iw = cw - 20;
 
-        // --- informacje o skrzynce ---
-        ChestManager.State st = ch.state(c);
-        String stText;
-        int stCol;
-        if (d.busy()) {
-            stText = "Working: " + d.phase();
-            stCol = ui.accent;
+        // --- zapisane skrzynki ---
+        int chestRows = Math.max(1, cfg.chests.size());
+        ui.card(x, cy, cw, 30 + chestRows * 18);
+        ui.text("Saved chests: " + cfg.chests.size(), ix, cy + 8, Draw.TEXT);
+        if (cfg.chests.isEmpty()) {
+            ui.text("No chest selected", ix, cy + 19, Draw.WARN);
         } else {
-            switch (st) {
-                case READY -> {
-                    stText = "Ready";
-                    stCol = Draw.ON;
-                }
-                case OUT_OF_RANGE -> {
-                    stText = "Out of reach - move closer";
-                    stCol = Draw.WARN;
-                }
-                case OTHER_WORLD -> {
-                    stText = "Chest is in another world";
-                    stCol = Draw.WARN;
-                }
-                case MISSING -> {
-                    stText = "No chest at saved position";
-                    stCol = Draw.OFF;
-                }
-                default -> {
-                    stText = "No chest selected";
-                    stCol = Draw.WARN;
-                }
+            for (int i = 0; i < cfg.chests.size(); i++) {
+                var e = cfg.chests.get(i);
+                ChestManager.State state = ch.state(c, i);
+                String status = switch (state) {
+                    case READY -> "Ready";
+                    case OUT_OF_RANGE -> "Out of reach";
+                    case OTHER_WORLD -> "Other world";
+                    case MISSING -> "Missing";
+                    default -> "Unavailable";
+                };
+                int color = state == ChestManager.State.READY ? Draw.ON : Draw.WARN;
+                int yy = cy + 20 + i * 18;
+                ui.text((i + 1) + ". " + e.x + ", " + e.y + ", " + e.z + "  |  " + status, ix, yy, color);
             }
         }
-        ui.card(x, cy, cw, 82);
-        int ry = cy + 8;
-        ui.text(cfg.chestSet ? "Chest: " + cfg.chestX + ", " + cfg.chestY + ", " + cfg.chestZ : "Chest: not selected", ix, ry, Draw.TEXT);
-        ui.text(ui.fit(cfg.chestSet ? cfg.chestDimension + " | " + cfg.chestWorldKey : "", iw - 150), ix + 150, ry, Draw.MUTED);
-        ry += 13;
-        ui.text("Connection: " + stText, ix, ry, stCol);
-        ry += 13;
-        int free = d.lastFreeSlots();
-        ui.text("Free chest slots: " + (free < 0 ? "unknown (seen when opened)" : String.valueOf(free)), ix, ry, Draw.TEXT);
-        ry += 13;
-        ui.text("Pending items: " + Fmt.num(ui.num("pending", d.pendingItems(c))), ix, ry, Draw.TEXT);
-        ry += 13;
-        ui.text("Last result: " + (d.lastResult().isEmpty() ? "-" : d.lastResult()), ix, ry, Draw.MUTED);
-        cy += 90;
+        cy += 38 + chestRows * 18;
+
+        ui.text("Free slots in last opened chest: " + (d.lastFreeSlots() < 0 ? "unknown" : d.lastFreeSlots()), ix, cy, Draw.TEXT);
+        cy += 14;
+        ui.text("Pending items: " + Fmt.num(ui.num("pending", d.pendingItems(c))), ix, cy, Draw.TEXT);
+        cy += 14;
+        ui.text("Last result: " + (d.lastResult().isEmpty() ? "-" : d.lastResult()), ix, cy, Draw.MUTED);
+        cy += 20;
 
         int third = (cw - 16) / 3;
-        ui.button("selchest", x, cy, third, 22, "SELECT CHEST", Ui.Style.PRIMARY, true, () -> {
+        ui.button("selchest", x, cy, third, 22, "ADD CHEST", Ui.Style.PRIMARY, true, () -> {
             c.setScreen(null);
             ch.startPicking();
         });
-        ui.button("clrchest", x + third + 8, cy, third, 22, "CLEAR CHEST", Ui.Style.GHOST, cfg.chestSet, ch::clear);
+        ui.button("clrchest", x + third + 8, cy, third, 22, "CLEAR ALL", Ui.Style.GHOST, !cfg.chests.isEmpty(), ch::clear);
         ui.button("depnow", x + (third + 8) * 2, cy, cw - (third + 8) * 2, 22, "DEPOSIT NOW", Ui.Style.SUCCESS, !d.busy(), () -> {
             d.requestNow();
             c.setScreen(null);
