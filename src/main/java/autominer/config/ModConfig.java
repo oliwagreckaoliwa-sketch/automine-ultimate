@@ -49,10 +49,23 @@ public class ModConfig {
     public List<String> depositFilter = new ArrayList<>(DEFAULT_FILTER);
     public List<String> depositFilterOff = new ArrayList<>();
     public List<String> learnedDrops = new ArrayList<>();
+    public List<ChestEntry> chests = new ArrayList<>();
+    // Legacy single-chest fields are retained for one-time migration.
     public boolean chestSet = false;
     public String chestWorldKey = "";
     public String chestDimension = "";
     public int chestX, chestY, chestZ;
+
+    public static class ChestEntry {
+        public String worldKey = "";
+        public String dimension = "";
+        public int x, y, z;
+        public ChestEntry() {}
+        public ChestEntry(String worldKey, String dimension, int x, int y, int z) {
+            this.worldKey = worldKey; this.dimension = dimension;
+            this.x = x; this.y = y; this.z = z;
+        }
+    }
 
     // --- HUD ---
     public boolean hudVisible = true;
@@ -99,6 +112,9 @@ public class ModConfig {
         if (hudStats == null) hudStats = new LinkedHashMap<>();
         if (chestWorldKey == null) chestWorldKey = "";
         if (chestDimension == null) chestDimension = "";
+        if (chests == null) chests = new ArrayList<>();
+        if (chests.isEmpty() && chestSet) chests.add(new ChestEntry(chestWorldKey, chestDimension, chestX, chestY, chestZ));
+        chestSet = !chests.isEmpty();
 
         for (BlockGroup g : groups) {
             if (g.name == null || g.name.isBlank()) g.name = "Group";
